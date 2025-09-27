@@ -5,11 +5,50 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 import os
 from pathlib import Path
+import json
+from typing import List
+IDEAS_FILE = os.path.join(current_dir, "ideas.json")
+
+def load_ideas() -> List[str]:
+    if not os.path.exists(IDEAS_FILE):
+        return []
+    with open(IDEAS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_ideas(ideas: List[str]):
+    with open(IDEAS_FILE, "w", encoding="utf-8") as f:
+        json.dump(ideas, f, ensure_ascii=False, indent=2)
+
+# Endpoints para ideias
+@app.get("/ideas")
+def get_ideas():
+    """Listar todas as ideias salvas"""
+    return load_ideas()
+
+@app.post("/ideas")
+def add_idea(idea: str = Body(..., embed=True)):
+    """Adicionar uma nova ideia"""
+    ideas = load_ideas()
+    if idea in ideas:
+        raise HTTPException(status_code=400, detail="Ideia já existe")
+    ideas.append(idea)
+    save_ideas(ideas)
+    return {"message": "Ideia adicionada com sucesso"}
+
+@app.delete("/ideas")
+def delete_idea(idea: str = Body(..., embed=True)):
+    """Remover uma ideia existente"""
+    ideas = load_ideas()
+    if idea not in ideas:
+        raise HTTPException(status_code=404, detail="Ideia não encontrada")
+    ideas.remove(idea)
+    save_ideas(ideas)
+    return {"message": "Ideia removida com sucesso"}
 
 app = FastAPI(title="Mergington High School API",
               description="API for viewing and signing up for extracurricular activities")
